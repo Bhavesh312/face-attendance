@@ -1,6 +1,7 @@
 streamlit
 streamlit-webrtc
 av
+dlib-bin
 face_recognition
 Pillow
 numpy
