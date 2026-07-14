@@ -1,0 +1,9 @@
+streamlit
+streamlit-webrtc
+av
+face_recognition
+Pillow
+numpy
+pandas
+SQLAlchemy
+psycopg2-binary
