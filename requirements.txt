@@ -1,4 +1,7 @@
+git+https://github.com/ageitgey/face_recognition_models
+dlib-bin
 streamlit
+face_recognition
 Pillow
 numpy
 pandas
