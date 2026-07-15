@@ -1,9 +1,9 @@
-git+https://github.com/ageitgey/face_recognition_models
 dlib-bin
-streamlit
-face_recognition
+git+https://github.com/ageitgey/face_recognition_models
+click
 Pillow
 numpy
 pandas
+streamlit
 SQLAlchemy
 psycopg2-binary
