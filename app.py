@@ -259,12 +259,6 @@ def show_teacher_portal():
     st.header("Take Attendance (Group Photo)")
     st.caption("Click ONE photo of the whole class. Works accurately even with 40-50 students in frame.")
 
-    from mtcnn import MTCNN
-
-    @st.cache_resource
-    def get_mtcnn_detector():
-        return MTCNN()
-
     group_photo = st.camera_input("Capture classroom photo", key="group_attendance_camera")
 
     group_threshold = st.slider(
@@ -278,19 +272,15 @@ def show_teacher_portal():
                 img = Image.open(group_photo).convert("RGB")
                 img_np = np.array(img)
 
-                detector = get_mtcnn_detector()
-                detections = detector.detect_faces(img_np)
+                # face_recognition's own HOG-based detector handles multiple
+                # faces in a group photo well, without needing a separate
+                # TensorFlow-based model (which was the main cause of
+                # out-of-memory crashes during deployment).
+                face_locations = face_recognition.face_locations(img_np)
 
-                if not detections:
+                if not face_locations:
                     st.error("No faces detected. Try a clearer, well-lit photo.")
                 else:
-                    face_locations = []
-                    for det in detections:
-                        x, y, w, h = det["box"]
-                        x, y = max(0, x), max(0, y)
-                        top, right, bottom, left = y, x + w, y + h, x
-                        face_locations.append((top, right, bottom, left))
-
                     face_encodings = face_recognition.face_encodings(img_np, known_face_locations=face_locations)
 
                     group_students = get_students_by_class(selected_class_id)
@@ -298,27 +288,47 @@ def show_teacher_portal():
                     for s in group_students:
                         if s.encoding_json:
                             try:
-                                known_encodings.append(np.array(json.loads(s.encoding_json)))
+                                known_encodings.append(np.array(json.loads(s.encoding_json), dtype='float64'))
                                 known_ids.append(s.id)
                                 known_names.append(s.name)
                             except Exception:
                                 pass
 
+                    # Greedy unique assignment: closest face-student pairs first,
+                    # so the same student can never be matched to two different
+                    # faces in the photo.
+                    candidate_pairs = []
+                    if known_encodings:
+                        known_enc_array = np.array(known_encodings, dtype='float64')
+                        if known_enc_array.ndim == 1:
+                            known_enc_array = known_enc_array.reshape(1, -1)
+                        for face_idx, enc in enumerate(face_encodings):
+                            dists = face_recognition.face_distance(known_enc_array, np.array(enc, dtype='float64'))
+                            for student_idx, dist in enumerate(dists):
+                                if dist <= group_threshold:
+                                    candidate_pairs.append((float(dist), face_idx, student_idx))
+                    candidate_pairs.sort(key=lambda x: x[0])
+
+                    assigned_face, assigned_student = {}, set()
+                    for dist, face_idx, student_idx in candidate_pairs:
+                        if face_idx in assigned_face or student_idx in assigned_student:
+                            continue
+                        assigned_face[face_idx] = student_idx
+                        assigned_student.add(student_idx)
+
                     present_ids = set()
                     annotated = img.copy()
                     draw = ImageDraw.Draw(annotated)
 
-                    for loc, enc in zip(face_locations, face_encodings):
+                    for i, loc in enumerate(face_locations):
                         top, right, bottom, left = loc
                         name_label, matched_id = "Unknown", None
 
-                        if known_encodings:
-                            dists = face_recognition.face_distance(known_encodings, enc)
-                            best_idx = int(np.argmin(dists))
-                            if dists[best_idx] <= group_threshold:
-                                matched_id = known_ids[best_idx]
-                                name_label = known_names[best_idx]
-                                present_ids.add(matched_id)
+                        if i in assigned_face:
+                            student_idx = assigned_face[i]
+                            matched_id = known_ids[student_idx]
+                            name_label = known_names[student_idx]
+                            present_ids.add(matched_id)
 
                         color = "green" if matched_id else "red"
                         draw.rectangle(((left, top), (right, bottom)), outline=color, width=3)

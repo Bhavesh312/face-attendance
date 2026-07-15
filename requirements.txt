@@ -1,10 +1,6 @@
 streamlit
-streamlit-webrtc
-av
-dlib-bin
 face_recognition
 Pillow
 numpy
-pandas
 SQLAlchemy
 psycopg2-binary

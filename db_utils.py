@@ -2,9 +2,26 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import hashlib
+import os
 
 Base = declarative_base()
-engine = create_engine("sqlite:///attendance.db")
+
+# ---------------- Database connection ----------------
+# On Streamlit Cloud: reads DATABASE_URL from Streamlit secrets (a cloud
+# Postgres database, e.g. Supabase) so data survives app restarts/redeploys.
+# On your own laptop: falls back to the local attendance.db SQLite file, so
+# nothing changes for local development.
+DB_URL = None
+try:
+    import streamlit as st
+    DB_URL = st.secrets.get("DATABASE_URL", None)
+except Exception:
+    DB_URL = None
+
+if not DB_URL:
+    DB_URL = os.environ.get("DATABASE_URL", "sqlite:///attendance.db")
+
+engine = create_engine(DB_URL, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
 class Teacher(Base):
