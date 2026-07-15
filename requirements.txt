@@ -1,6 +1,4 @@
-dlib-bin
 streamlit
-face_recognition
 Pillow
 numpy
 pandas
