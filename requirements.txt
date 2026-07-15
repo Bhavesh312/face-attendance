@@ -1,6 +1,8 @@
+dlib-bin
 streamlit
 face_recognition
 Pillow
 numpy
+pandas
 SQLAlchemy
 psycopg2-binary
