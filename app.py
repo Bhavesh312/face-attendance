@@ -28,7 +28,7 @@ def warm_up_face_model():
     face_recognition.face_locations(dummy_img)
     return True
 
-warm_up_face_model()
+#warm_up_face_model()
 
 # ---------------- Shared registration logic ----------------
 def run_registration_flow(class_id, key_prefix):
